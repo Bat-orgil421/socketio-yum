@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model MealType {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  foods Food[]
+}
+
+model Food {
+  id         Int         @id @default(autoincrement())
+  name       String
+  calories   String
+  mealTypeId Int
+  cuisineId  Int?
+  image      String
+  price      Decimal     @db.Decimal(4, 2)
+  cartitem   CartItem[]
+  cuisine    Cuisine?    @relation(fields: [cuisineId], references: [id])
+  mealType   MealType    @relation(fields: [mealTypeId], references: [id])
+  orderItems OrderItem[]
+}
+
+model GroceryItem {
+  id         Int         @id @default(autoincrement())
+  name       String
+  unit       String
+  calPerUnit String
+  image      String?
+  price      Decimal     @db.Decimal(4, 2)
+  orderItems OrderItem[]
+}
+
+model Cart {
+  id     String     @id @default(uuid())
+  userId Int        @unique
+  user   User       @relation(fields: [userId], references: [id])
+  items  CartItem[]
+}
+
+model CartItem {
+  id       String @id @default(uuid())
+  cartId   String
+  foodId   Int
+  quantity Int
+  cart     Cart   @relation(fields: [cartId], references: [id])
+  food     Food   @relation(fields: [foodId], references: [id])
+}
+
+model Cuisine {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  food Food[]
+}
+
+model Schedule {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  startTime String
+  endTime   String
+  activity  String
+  completed Boolean  @default(false)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id              Int                @id @default(autoincrement())
+  name            String
+  email           String             @unique
+  isAdmin         Boolean            @default(false)
+  streak          Int                @default(0)
+  points          Int                @default(0)
+  lastLoginDate   DateTime?
+  streakStartDate DateTime?
+  username        String?
+  cart            Cart?
+  friendsReceived Friendship[]       @relation("UserReceived")
+  friendsSent     Friendship[]       @relation("UserSent")
+  orders          Order[]
+  schedules       Schedule[]
+  healthProfile   UserHealthProfile?
+}
+
+model UserHealthProfile {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  age              Int
+  sex              String
+  height           Int
+  weight           Float
+  mainGoal         String
+  goalWeight       Float?
+  activityLevel    String
+  // Calorie and macro information
+  bmr              Int?
+  tdee             Int?
+  recommendedCalories Int?
+  proteinGrams     Int?
+  proteinCalories  Int?
+  fatGrams         Int?
+  fatCalories      Int?
+  carbsGrams       Int?
+  carbsCalories    Int?
+  waterLiters      Float?
+  bmi              Float?
+  bmiStatus        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model Friendship {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  receiver   User     @relation("UserReceived", fields: [receiverId], references: [id])
+  sender     User     @relation("UserSent", fields: [senderId], references: [id])
+
+  @@unique([senderId, receiverId])
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  status          OrderStatus @default(PENDING)
+  totalPrice      Int
+  deliveryType    String      @default("pickup")
+  deliveryAddress String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id            Int          @id @default(autoincrement())
+  orderId       Int
+  foodId        Int?
+  groceryItemId Int?
+  quantity      Int
+  price         Int
+  food          Food?        @relation(fields: [foodId], references: [id])
+  groceryItem   GroceryItem? @relation(fields: [groceryItemId], references: [id])
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  DELIVERING
+  COMPLETED
+  CANCELLED
+}
